@@ -1,4 +1,7 @@
 use std::{thread, time};
+use termion::{color,clear, cursor, raw::IntoRawMode, event::Key, input::TermRead};
+use std::io::{Write, stdout, stdin};
+
 
 pub struct LertVisualizer{
     pub ram_size: u32,
@@ -29,6 +32,10 @@ impl LertVisualizer{
         println!("M = {} \nD = {} \ndepth = {} \nr = {} \nalpha = {} \nc = {} \n", self.ram_size, self.disk_size, self.depth, self.expansion_factor, self.time_stretch, self.num_bins);
     }
 
+    fn display_controls(&self, line: u16){
+        print!("{goto}Left/right arrow keys for previous/next epoch. q to quit.", goto = cursor::Goto(1,line));
+    }
+
     //returns true if the bin flushes at this time step.
     pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32) -> bool {
         let mod_term = self.expansion_factor.pow(level) * self.num_bins;
@@ -40,6 +47,14 @@ impl LertVisualizer{
     }
 
     pub fn display_bins(&self, timestep: u32) {
+        assert!(timestep >=0);
+        self.wipeout();
+        let mut next_line: u16 = 2;
+        self.display_controls(next_line);
+        next_line+=1;
+        print!("{goto}Epoch: {t}", t = timestep, goto = cursor::Goto(1,next_line));
+        next_line += 1;
+
         let line_length: u32 = 4*self.num_bins+1;
         //let num_lines: u32 = 2*self.depth+1;
         let mut horizontal_line = String::with_capacity(line_length as usize);
@@ -47,8 +62,10 @@ impl LertVisualizer{
             horizontal_line.push('-');
         }
 
+        
         for j in 0..=self.depth {
-            println!("{}", horizontal_line);
+            println!("{goto}{h}", h = horizontal_line, goto = cursor::Goto(1,next_line));
+            next_line += 1;
 
             let mut line_frame = String::with_capacity(line_length as usize);
             for i in 0..=line_length {
@@ -67,29 +84,78 @@ impl LertVisualizer{
                     line_frame.push(' ');
                 }
             }
-            println!("{}", line_frame);
+            print!("{goto}{}", line_frame, goto = cursor::Goto(1,next_line));
+            next_line+=1;
 
         }
         
-        println!("{}", horizontal_line);
-       
+        print!("{goto}{}", horizontal_line, goto = cursor::Goto(1,next_line));
+        next_line +=1;
+        print!("{}", goto = cursor::Goto(1,next_line))
     }
 
     fn wipeout(&self) {
-        println!("\x1B[H\x1B[J");
+        println!("{clear}{goto}",
+             // Full screen clear.
+             clear = clear::All,
+             // Go back to the top left.
+             goto  = cursor::Goto(1, 1));
     }
 
+    fn next(& mut self) {
+        self.wipeout();
+        self.epoch_counter += 1;
+        self.display_bins(self.epoch_counter);
+    }
+
+    fn previous(& mut self) {
+        self.wipeout();
+        self.epoch_counter -= 1;
+        self.display_bins(self.epoch_counter);
+    }
+    
+
     //animates the flushing schedule from epoch start_step for duration epochs. updates at a rate of refresh milliseconds.
-    pub fn animate_bins(&self, start_step: u32, duration: u32, refresh: u32){
+    pub fn animate_bins_auto(&self, start_step: u32, duration: u32, refresh: u32){
+
         let refresh_rate = time::Duration::from_millis(refresh as u64);
         let end_step = start_step+duration;
         for i in start_step..=end_step{
-            self.wipeout();
-            println!("Epoch: {}", i);
+            //self.wipeout();
+            //println!("Epoch: {}", i);
             self.display_bins(i);
             thread::sleep(refresh_rate);
 
         }
+    }
+
+    pub fn animate_bins_manual(& mut self, start_step: u32) {
+        let stdin = stdin();
+        let mut stdout = stdout().into_raw_mode().unwrap();
+        self.epoch_counter = start_step;
+
+        //self.wipeout();
+        //writeln!(stdout, "{}", format!("Epoch: {}", i)).unwrap();
+
+        self.display_bins(self.epoch_counter);
+
+        //writeln!(stdout, "Left/right arrow keys for previous/next epoch. q to quit.").unwrap();
+
+        //self.display_controls();
+
+        for c in stdin.keys() {
+    
+            // Print the key we type...
+            match c.unwrap() {
+                // Exit.
+                Key::Char('q') => break,
+                Key::Right => self.next(),
+                Key::Left => self.previous(),
+                _              => break,
+            }
+        }
+
+    
     }
 }
 
@@ -103,12 +169,10 @@ fn main() {
     let disk_size: u32 = 20;
     let expansion_factor: u32 = 2;
     let time_stretch: u32 = 1;
-    let l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
+    let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
     //l.display_parameters();
-    //for i in 0..=4 {
-        //println!("{}", l.bin_status(0,1,i));
-    //    l.display_bins(i);
-    //}
-    //l.display_bins(0);
-    l.animate_bins(0,10,1000)
+
+    l.animate_bins_manual(0);
+    
+
 }
