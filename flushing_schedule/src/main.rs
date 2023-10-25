@@ -1,6 +1,7 @@
 use std::{thread, time};
 use termion::{color,clear, cursor, raw::IntoRawMode, event::Key, input::TermRead};
 use std::io::{Write, stdout, stdin};
+use std::cmp::min;
 
 
 pub struct LertVisualizer{
@@ -8,15 +9,15 @@ pub struct LertVisualizer{
     pub disk_size: u32,
     pub depth: u32,
     pub expansion_factor: u32,
-    pub time_stretch: u32,
+    pub time_stretch: f64,
     pub num_bins: u32,
     pub epoch_counter: u32,
 }
 
 impl LertVisualizer{
-    pub fn new(ram_size: u32, disk_size: u32, expansion_factor: u32, time_stretch: u32) -> LertVisualizer{
+    pub fn new(ram_size: u32, disk_size: u32, expansion_factor: u32, time_stretch: f64) -> LertVisualizer{
         let depth = (disk_size as f64/(2.0*ram_size as f64).log(expansion_factor as f64)).ceil() as u32;
-        let num_bins = (1.0/(time_stretch as f64)).ceil() as u32 +1;
+        let num_bins = (1.0/(time_stretch)).ceil() as u32 +1;
         LertVisualizer{
             ram_size: ram_size,
             disk_size: disk_size,
@@ -36,14 +37,61 @@ impl LertVisualizer{
         print!("{goto}Left/right arrow keys for previous/next epoch. q to quit.", goto = cursor::Goto(1,line));
     }
 
-    //returns true if the bin flushes at this time step.
-    pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32) -> bool {
-        let mod_term = self.expansion_factor.pow(level) * self.num_bins;
-        let is_it_my_turn: bool = timestep % mod_term == (self.expansion_factor.pow(level)*(self.num_bins) -1 + bin_id) % mod_term;
-        let is_my_level_full: bool = timestep >= self.expansion_factor.pow(level)*self.num_bins -1;
+    //returns 2.0 if the bin flushes at this time step, else returns the bin's fractional fullness (between 0.0 and 1.0 inclusive.)
+    pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32) -> f64 {
+        let r = self.expansion_factor;
+        let c = self.num_bins;
+        let j = level;
+        let i = bin_id;
+        let t = timestep;
+
+        let mod_term = r.pow(j) * c;
+        let flush_step = r.pow(j)*(c + i) % mod_term;
+        let is_it_my_turn: bool = t % mod_term == flush_step;
+        let is_my_level_full: bool = t >= r.pow(j)*c;
+        //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
+        
         //println!("{}", is_it_my_turn);
         //println!("{}", is_my_level_full);
-        is_it_my_turn && is_my_level_full
+        if is_it_my_turn && is_my_level_full{
+            2.0
+        }
+        else { 
+            let next_bin_flush_step = r.pow(j)*(c + 1 + i) % mod_term;
+            //not edge bin
+            if next_bin_flush_step > flush_step{
+                //if i was the last bin to flush
+                if t % mod_term > flush_step && t % mod_term < next_bin_flush_step {
+
+                    //println!("got here {}", (t % mod_term) as f64/(r.pow(j)) as f64);
+                    ((t - flush_step) % mod_term) as f64/(r.pow(j-2)*self.num_bins) as f64
+
+                } 
+                else if t>=flush_step {
+                    1.0
+                }
+                else {
+                    0.0
+                }
+            }
+            else {
+                1.0
+            }
+
+            
+            // else {
+            //     if is_my_level_full{
+            //         1.0
+            //     }
+            //     else {
+            //         0.0
+            //     }
+            // }
+            
+
+        } 
+        //is_it_my_turn && is_my_level_full
+        
     }
 
     pub fn display_bins(&self, timestep: u32) {
@@ -72,26 +120,41 @@ impl LertVisualizer{
                 if i%4==0 {
                     line_frame.push('|');
                 }
-                else if i%2==0 {
-                    let mut flushing: char = ' ';
+                //else if i%2==0 {
+                //    let mut flushing: char = ' ';
                     
-                    if self.bin_status(j, ((i-2)as f64/4.0 as f64).floor() as u32, timestep) {
-                        flushing = 'x';
-                    }
-                    line_frame.push(flushing);
-                }
+                //   if self.bin_status(j, ((i-2)as f64/4.0 as f64).floor() as u32, timestep) {
+                //        flushing = 'x';
+                //    }
+                //    line_frame.push(flushing);
+                //}
                 else {
                     line_frame.push(' ');
                 }
+
             }
+            //print!("{goto}{}", line_frame, goto = cursor::Goto(1,next_line));
             print!("{goto}{}", line_frame, goto = cursor::Goto(1,next_line));
+            for i in 0..=self.num_bins -1 {
+                let status = self.bin_status(j, i, timestep);
+                let write_position = 4*i + 3;
+                if status == 2.0 {
+                    print!("{goto}!", goto = cursor::Goto(write_position.try_into().unwrap(),next_line));
+                }
+                else if status != 0.0 {
+                    let intensity = (status * 255.0) as u8;
+                    let color = color::Fg(color::Rgb(intensity, intensity, intensity));
+                    let reset = color::Fg(color::Reset);
+                    print!("{goto}{c}X{r}", goto = cursor::Goto(write_position.try_into().unwrap(),next_line), c = color, r = reset);
+                }
+            }
             next_line+=1;
 
         }
         
         print!("{goto}{}", horizontal_line, goto = cursor::Goto(1,next_line));
         next_line +=1;
-        print!("{}", goto = cursor::Goto(1,next_line))
+        print!("{goto}", goto = cursor::Goto(1,next_line))
     }
 
     fn wipeout(&self) {
@@ -109,9 +172,13 @@ impl LertVisualizer{
     }
 
     fn previous(& mut self) {
-        self.wipeout();
-        self.epoch_counter -= 1;
-        self.display_bins(self.epoch_counter);
+        if self.epoch_counter == 0 {
+        }
+        else {
+            self.wipeout();
+            self.epoch_counter -= 1;
+            self.display_bins(self.epoch_counter);
+        }
     }
     
 
@@ -168,11 +235,21 @@ fn main() {
     let ram_size: u32 = 5;
     let disk_size: u32 = 20;
     let expansion_factor: u32 = 2;
-    let time_stretch: u32 = 1;
+    let time_stretch: f64 = 0.5;
     let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
     //l.display_parameters();
 
-    l.animate_bins_manual(0);
+    for i in 0..=20{
+        println!("{}", l.bin_status(2,1,i));
+    }
+   // println!("{}", l.bin_status(0,0, 0));
+   // println!("{}", l.bin_status(0,0, 1));
+    //println!("{}", l.bin_status(0,0, 2));
+    
+    //println!("{red}more red than any comrade{reset}", red = color::Fg(color::Rgb(100,100,100)), reset = color::Fg(color::Reset));
+
+    //l.animate_bins_manual(0);
+
     
 
 }
