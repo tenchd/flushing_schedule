@@ -14,7 +14,11 @@ pub struct LertVisualizer{
 }
 
 impl LertVisualizer{
-    pub fn new(ram_size: u32, disk_size: u32, expansion_factor: u32, time_stretch: f64) -> LertVisualizer{
+    pub fn new(config: &(u32, u32, u32, f64)) -> LertVisualizer{
+        let ram_size = config.0;
+        let disk_size = config.1;
+        let expansion_factor = config.2;
+        let time_stretch = config.3;
         let depth = (disk_size as f64/(2.0*ram_size as f64).log(expansion_factor as f64)).ceil() as u32;
         let num_bins = (1.0/(time_stretch)).ceil() as u32 +1;
         LertVisualizer{
@@ -260,17 +264,86 @@ impl LertVisualizer{
     }
 }
 
+fn set_parameters(config: &mut (u32, u32, u32, f64)) {
+    println!("set ram size in GB. (integer values only)");
+    let mut input_line = String::new();
+
+    stdin()
+        .read_line(&mut input_line)
+        .expect("Failed to read line");
+
+    let ram_size: u32 = input_line.trim().parse().expect("ram size must be an integer");
+
+    println!("set disk size in GB. (integer values only)");
+
+    let mut input_line2 = String::new();
+
+    stdin()
+        .read_line(&mut input_line2)
+        .expect("Failed to read line");
+
+    let disk_size: u32 = input_line2.trim().parse().expect("disk dize must be an integer");
+
+    
+    println!("set expansion factor. (integer values only)");
+
+    let mut input_line3 = String::new();
+
+    stdin()
+        .read_line(&mut input_line3)
+        .expect("Failed to read line");
+
+    let expansion_factor: u32 = input_line3.trim().parse().expect("expansion factor must be an integer");
 
 
+    println!("set timestretch. (float values only - e.g., 0.5)");
+    
+    let mut input_line4 = String::new();
+
+    stdin()
+        .read_line(&mut input_line4)
+        .expect("Failed to read line");
+
+        let timestretch: f64 = input_line4.trim().parse().expect("timestretch must be a float");
+
+    config.0 = ram_size;
+    config.1 = disk_size;
+    config.2 = expansion_factor;
+    config.3 = timestretch;
+        
+        
+}
+
+
+fn choose_mode(config: &mut (u32, u32, u32, f64)){
+    println!("type 'p' to specify LERT parameters, or type anything else to use default values.");
+
+    let mut choice = String::new();
+
+    stdin()
+        .read_line(&mut choice)
+        .expect("Failed to read line");
+
+    //assert!(choice.trim().eq(&String::from("p")));
+
+    let specify = choice.trim().eq(&String::from("p"));
+
+    if specify{
+        set_parameters(config);
+    }
+}
 
 
 
 fn main() {
-    let ram_size: u32 = 5;
-    let disk_size: u32 = 20;
-    let expansion_factor: u32 = 3;
-    let time_stretch: f64 = 1.0;
-    let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
+    let mut config = (5u32, 20u32, 3u32, 0.5);
+
+    choose_mode(&mut config);
+    //let ram_size: u32 = 5;
+    //let disk_size: u32 = 20;
+    //let expansion_factor: u32 = 3;
+    //let time_stretch: f64 = 1.0;
+    let mut l = LertVisualizer::new(&config);
     //l.display_parameters();
 
     // for i in 0..=100{
