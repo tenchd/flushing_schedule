@@ -28,8 +28,18 @@ impl LertVisualizer{
         }
     }
 
-    pub fn display_parameters(&self){
-        println!("M = {} \nD = {} \ndepth = {} \nr = {} \nalpha = {} \nc = {} \n", self.ram_size, self.disk_size, self.depth, self.expansion_factor, self.time_stretch, self.num_bins);
+    pub fn display_parameters(&self,line:u16){
+        let mut lines = Vec::new();
+        for i in line..=line+5{
+            lines.push(cursor::Goto(1,i));
+        }
+        print!("{}M = {} {}D = {} {}depth = {} {}r = {} {}alpha = {} {}c = {}",
+        lines[0], self.ram_size, 
+        lines[1], self.disk_size,
+        lines[2], self.depth,
+        lines[3], self.expansion_factor, 
+        lines[4], self.time_stretch,
+        lines[5], self.num_bins);
     }
 
     fn display_controls(&self, line: u16){
@@ -119,7 +129,8 @@ impl LertVisualizer{
     pub fn display_bins(&self, timestep: u32) {
         //assert!(timestep >=0);
         self.wipeout();
-        let mut next_line: u16 = 2;
+        self.display_parameters(2);
+        let mut next_line: u16 = 9;
         self.display_controls(next_line);
         next_line+=1;
         print!("{goto}Epoch: {t}", t = timestep, goto = cursor::Goto(1,next_line));
@@ -255,7 +266,7 @@ impl LertVisualizer{
 fn main() {
     let ram_size: u32 = 5;
     let disk_size: u32 = 20;
-    let expansion_factor: u32 = 2;
+    let expansion_factor: u32 = 3;
     let time_stretch: f64 = 0.5;
     let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
     //l.display_parameters();
