@@ -50,6 +50,10 @@ impl LertVisualizer{
         print!("{goto}Left/right arrow keys for previous/next epoch. q to quit.", goto = cursor::Goto(1,line));
     }
 
+    fn display_interpretation(&self, line: u16){
+        print!("{goto}Blank space =  empty bin. X = nonempty bin. ! = flushing bin", goto = cursor::Goto(1,line));
+    }
+
     fn compute_first_flush(&self, level: u32) -> u32 {
         let r = self.expansion_factor;
         let c = self.num_bins;
@@ -138,6 +142,8 @@ impl LertVisualizer{
         self.display_parameters(2);
         let mut next_line: u16 = 9;
         self.display_controls(next_line);
+        next_line += 1;
+        self.display_interpretation(next_line);
         next_line+=1;
         print!("{goto}Epoch: {t}", t = timestep, goto = cursor::Goto(1,next_line));
         next_line += 1;
