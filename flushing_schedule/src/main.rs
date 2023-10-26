@@ -91,7 +91,9 @@ impl LertVisualizer{
         let touch_step = r.pow(j)*(c + i) % mod_term + zeroth_flush;
         //println!("{}", touch_step);
         let flush_step = (r.pow(j)*(c + i) + first_flush) % mod_term;
+        let next_bin_flush_step = (r.pow(j)*(c + i + 1) + first_flush) % mod_term;
         let is_it_my_turn: bool = t % mod_term == flush_step;
+        let im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
         let is_my_bin_touched = t>= touch_step;
         let is_my_level_full: bool = t >= first_flush;
         //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
@@ -101,39 +103,25 @@ impl LertVisualizer{
         // println!("mod_term = {}", mod_term);
         // println!("first_flush = {}", first_flush);
         // println!("flush_step = {}", flush_step);
+
+        //println!("is my bin touched: {}, am I filling: {}", is_my_bin_touched, im_filling);
         if is_it_my_turn && is_my_level_full{
             2.0
         }
         else { 
             if is_my_bin_touched {
+                if im_filling{
+                    let bin_size = r.pow(j);
+                    ((t-1)% bin_size) as f64 / bin_size as f64
+                }
+                else{
                 1.0
+                }
             }
             else{
                 0.0
-            }
-            // let next_bin_flush_step = r.pow(j)*(c + 1 + i) % mod_term;
-            // //not edge bin
-            // if next_bin_flush_step > flush_step{
-            //     //if i was the last bin to flush
-            //     if t % mod_term > flush_step && t % mod_term < next_bin_flush_step {
-
-            //         //println!("got here {}", (t % mod_term) as f64/(r.pow(j)) as f64);
-            //         ((t - flush_step) % mod_term) as f64/(r.pow(j-2)*self.num_bins) as f64
-
-            //     } 
-            //     else if t>=flush_step {
-            //         1.0
-            //     }
-            //     else {
-            //         0.0
-            //     }
-            // }
-            // else {
-            //     1.0
-            // }
-
-        } 
-        
+            }     
+        }   
     }
 
     pub fn display_bins(&self, timestep: u32) {
@@ -357,7 +345,7 @@ fn main() {
     //         println!("{}", i);
     //     }
     // }
-   // println!("{}", l.bin_status(0,0, 0));
+    //println!("{}", l.bin_status(1,2, 8));
    // println!("{}", l.bin_status(0,0, 1));
     //println!("{}", l.bin_status(0,0, 2));
     
