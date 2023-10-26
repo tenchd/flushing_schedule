@@ -33,7 +33,7 @@ impl LertVisualizer{
         for i in line..=line+5{
             lines.push(cursor::Goto(1,i));
         }
-        print!("{}M = {} {}D = {} {}depth = {} {}r = {} {}alpha = {} {}c = {}",
+        print!("{}M = memory size = {} {}D = disk size = {} {}depth = {} {}r = expansion factor = {} {}alpha = timestretch = {} {}c = number of bins per level = {}",
         lines[0], self.ram_size, 
         lines[1], self.disk_size,
         lines[2], self.depth,
@@ -46,15 +46,17 @@ impl LertVisualizer{
         print!("{goto}Left/right arrow keys for previous/next epoch. q to quit.", goto = cursor::Goto(1,line));
     }
 
-    fn compute_first_flush(&self, r: u32, c: u32, level: u32) -> u32 {
+    fn compute_first_flush(&self, level: u32) -> u32 {
+        let r = self.expansion_factor;
+        let c = self.num_bins;
         let j = level;
         let mut first_flush = 0;
         match j {
-            0 => first_flush = 2,
-            1 => first_flush = 10,
+            0 => first_flush = c - 1,
+            //1 => first_flush = r*c + c - 2,
             _ => {
-                first_flush = r.pow(j)*c + 1;
-                for k in 1..=j-1{
+                first_flush = r.pow(j)*c - 1;
+                for k in 0..=j-1{
                     first_flush += r.pow(k)*(c-1);
                 }
             }
@@ -72,10 +74,10 @@ impl LertVisualizer{
 
         let mod_term = r.pow(j) * c;
         //compute the first time any bin on this level flushes.
-        let first_flush = self.compute_first_flush(r, c, j);
+        let first_flush = self.compute_first_flush(j);
         let mut zeroth_flush = 0;
         if j>0 {
-            zeroth_flush = self.compute_first_flush(r, c, j-1);
+            zeroth_flush = self.compute_first_flush(j-1);
         }
         //println!("{}",first_flush);
         let touch_step = r.pow(j)*(c + i) % mod_term + zeroth_flush;
@@ -267,7 +269,7 @@ fn main() {
     let ram_size: u32 = 5;
     let disk_size: u32 = 20;
     let expansion_factor: u32 = 3;
-    let time_stretch: f64 = 0.5;
+    let time_stretch: f64 = 1.0;
     let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
     //l.display_parameters();
 
