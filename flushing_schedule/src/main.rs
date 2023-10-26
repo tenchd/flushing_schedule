@@ -1,7 +1,6 @@
 use std::{thread, time};
 use termion::{color,clear, cursor, raw::IntoRawMode, event::Key, input::TermRead};
 use std::io::{Write, stdout, stdin};
-use std::cmp::min;
 
 
 pub struct LertVisualizer{
@@ -37,6 +36,22 @@ impl LertVisualizer{
         print!("{goto}Left/right arrow keys for previous/next epoch. q to quit.", goto = cursor::Goto(1,line));
     }
 
+    fn compute_first_flush(&self, r: u32, c: u32, level: u32) -> u32 {
+        let j = level;
+        let mut first_flush = 0;
+        match j {
+            0 => first_flush = 2,
+            1 => first_flush = 10,
+            _ => {
+                first_flush = r.pow(j)*c + 1;
+                for k in 1..=j-1{
+                    first_flush += r.pow(k)*(c-1);
+                }
+            }
+        }
+        first_flush
+    }
+
     //returns 2.0 if the bin flushes at this time step, else returns the bin's fractional fullness (between 0.0 and 1.0 inclusive.)
     pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32) -> f64 {
         let r = self.expansion_factor;
@@ -46,56 +61,63 @@ impl LertVisualizer{
         let t = timestep;
 
         let mod_term = r.pow(j) * c;
-        let flush_step = r.pow(j)*(c + i) % mod_term;
+        //compute the first time any bin on this level flushes.
+        let first_flush = self.compute_first_flush(r, c, j);
+        let mut zeroth_flush = 0;
+        if j>0 {
+            zeroth_flush = self.compute_first_flush(r, c, j-1);
+        }
+        //println!("{}",first_flush);
+        let touch_step = r.pow(j)*(c + i) % mod_term + zeroth_flush;
+        //println!("{}", touch_step);
+        let flush_step = (r.pow(j)*(c + i) + first_flush) % mod_term;
         let is_it_my_turn: bool = t % mod_term == flush_step;
-        let is_my_level_full: bool = t >= r.pow(j)*c;
+        let is_my_bin_touched = t>= touch_step;
+        let is_my_level_full: bool = t >= first_flush;
         //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
         
-        //println!("{}", is_it_my_turn);
-        //println!("{}", is_my_level_full);
+        // println!("is it my turn: {}", is_it_my_turn);
+        // println!("is my level full: {}", is_my_level_full);
+        // println!("mod_term = {}", mod_term);
+        // println!("first_flush = {}", first_flush);
+        // println!("flush_step = {}", flush_step);
         if is_it_my_turn && is_my_level_full{
             2.0
         }
         else { 
-            let next_bin_flush_step = r.pow(j)*(c + 1 + i) % mod_term;
-            //not edge bin
-            if next_bin_flush_step > flush_step{
-                //if i was the last bin to flush
-                if t % mod_term > flush_step && t % mod_term < next_bin_flush_step {
-
-                    //println!("got here {}", (t % mod_term) as f64/(r.pow(j)) as f64);
-                    ((t - flush_step) % mod_term) as f64/(r.pow(j-2)*self.num_bins) as f64
-
-                } 
-                else if t>=flush_step {
-                    1.0
-                }
-                else {
-                    0.0
-                }
-            }
-            else {
+            if is_my_bin_touched {
                 1.0
             }
+            else{
+                0.0
+            }
+            // let next_bin_flush_step = r.pow(j)*(c + 1 + i) % mod_term;
+            // //not edge bin
+            // if next_bin_flush_step > flush_step{
+            //     //if i was the last bin to flush
+            //     if t % mod_term > flush_step && t % mod_term < next_bin_flush_step {
 
-            
-            // else {
-            //     if is_my_level_full{
+            //         //println!("got here {}", (t % mod_term) as f64/(r.pow(j)) as f64);
+            //         ((t - flush_step) % mod_term) as f64/(r.pow(j-2)*self.num_bins) as f64
+
+            //     } 
+            //     else if t>=flush_step {
             //         1.0
             //     }
             //     else {
             //         0.0
             //     }
             // }
-            
+            // else {
+            //     1.0
+            // }
 
         } 
-        //is_it_my_turn && is_my_level_full
         
     }
 
     pub fn display_bins(&self, timestep: u32) {
-        assert!(timestep >=0);
+        //assert!(timestep >=0);
         self.wipeout();
         let mut next_line: u16 = 2;
         self.display_controls(next_line);
@@ -212,7 +234,6 @@ impl LertVisualizer{
 
         for c in stdin.keys() {
     
-            // Print the key we type...
             match c.unwrap() {
                 // Exit.
                 Key::Char('q') => break,
@@ -239,16 +260,18 @@ fn main() {
     let mut l = LertVisualizer::new(ram_size, disk_size, expansion_factor, time_stretch);
     //l.display_parameters();
 
-    for i in 0..=20{
-        println!("{}", l.bin_status(2,1,i));
-    }
+    // for i in 0..=100{
+    //     if l.bin_status(2,0,i) == 2.0 {
+    //         println!("{}", i);
+    //     }
+    // }
    // println!("{}", l.bin_status(0,0, 0));
    // println!("{}", l.bin_status(0,0, 1));
     //println!("{}", l.bin_status(0,0, 2));
     
     //println!("{red}more red than any comrade{reset}", red = color::Fg(color::Rgb(100,100,100)), reset = color::Fg(color::Reset));
 
-    //l.animate_bins_manual(0);
+    l.animate_bins_manual(0);
 
     
 
