@@ -93,7 +93,10 @@ impl LertVisualizer{
         let flush_step = (r.pow(j)*(c + i) + first_flush) % mod_term;
         let next_bin_flush_step = (r.pow(j)*(c + i + 1) + first_flush) % mod_term;
         let is_it_my_turn: bool = t % mod_term == flush_step;
-        let im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
+        let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
+        //if bin_id == self.num_bins - 1 {
+        //    im_filling = t % mod_term <= (next_bin_flush_step % mod_term) - 1
+        //}
         let is_my_bin_touched = t>= touch_step;
         let is_my_level_full: bool = t >= first_flush;
         //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
@@ -112,7 +115,8 @@ impl LertVisualizer{
             if is_my_bin_touched {
                 if im_filling{
                     let bin_size = r.pow(j);
-                    ((t-1)% bin_size) as f64 / bin_size as f64
+                    (((t-1)% bin_size) as f64 /r.pow(j-1) as f64).floor()/r as f64
+                    //((t-1)% bin_size) as f64 / bin_size as f64
                 }
                 else{
                 1.0
