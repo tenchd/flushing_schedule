@@ -93,7 +93,9 @@ impl LertVisualizer{
         let flush_step = (r.pow(j)*(c + i) + first_flush) % mod_term;
         let next_bin_flush_step = (r.pow(j)*(c + i + 1) + first_flush) % mod_term;
         let is_it_my_turn: bool = t % mod_term == flush_step;
-        let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
+        //println!("{}",(next_bin_flush_step % mod_term));
+        //let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
+        let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term;
         //if bin_id == self.num_bins - 1 {
         //    im_filling = t % mod_term <= (next_bin_flush_step % mod_term) - 1
         //}
@@ -334,13 +336,11 @@ fn choose_mode(config: &mut (u32, u32, u32, f64)){
 
 
 fn main() {
-    let mut config = (5u32, 20u32, 3u32, 0.5);
+    let mut config = (5u32, 20u32, 2u32, 0.5);
+    //let mut config = (2u32, 20u32, 2u32, 1.0);
 
     choose_mode(&mut config);
-    //let ram_size: u32 = 5;
-    //let disk_size: u32 = 20;
-    //let expansion_factor: u32 = 3;
-    //let time_stretch: f64 = 1.0;
+    
     let mut l = LertVisualizer::new(&config);
     //l.display_parameters();
 
@@ -349,12 +349,10 @@ fn main() {
     //         println!("{}", i);
     //     }
     // }
-    //println!("{}", l.bin_status(1,2, 8));
-   // println!("{}", l.bin_status(0,0, 1));
-    //println!("{}", l.bin_status(0,0, 2));
-    
-    //println!("{red}more red than any comrade{reset}", red = color::Fg(color::Rgb(100,100,100)), reset = color::Fg(color::Reset));
 
+    //println!("{}", l.bin_status(1,1,3));
+    
+    
     l.animate_bins_manual(0);
 
     
