@@ -96,9 +96,9 @@ impl LertVisualizer{
         //println!("{}",(next_bin_flush_step % mod_term));
         //let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
         let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term;
-        //if bin_id == self.num_bins - 1 {
-        //    im_filling = t % mod_term <= (next_bin_flush_step % mod_term) - 1
-        //}
+        if bin_id == self.num_bins - 1 {
+           im_filling = t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term
+        }
         let is_my_bin_touched = t>= touch_step;
         let is_my_level_full: bool = t >= first_flush;
         //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
@@ -115,7 +115,7 @@ impl LertVisualizer{
         }
         else { 
             if is_my_bin_touched {
-                if im_filling{
+                if im_filling && j > 0{
                     let bin_size = r.pow(j);
                     (((t-1)% bin_size) as f64 /r.pow(j-1) as f64).floor()/r as f64
                     //((t-1)% bin_size) as f64 / bin_size as f64
@@ -336,7 +336,7 @@ fn choose_mode(config: &mut (u32, u32, u32, f64)){
 
 
 fn main() {
-    let mut config = (5u32, 20u32, 2u32, 0.5);
+    let mut config = (5u32, 20u32, 3u32, 0.5);
     //let mut config = (2u32, 20u32, 2u32, 1.0);
 
     choose_mode(&mut config);
