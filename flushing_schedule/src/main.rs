@@ -73,7 +73,7 @@ impl LertVisualizer{
     }
 
     //returns 2.0 if the bin flushes at this time step, else returns the bin's fractional fullness (between 0.0 and 1.0 inclusive.)
-    pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32) -> f64 {
+    pub fn bin_status(&self, level: u32, bin_id: u32, timestep: u32, partial: bool) -> f64 {
         let r = self.expansion_factor;
         let c = self.num_bins;
         let j = level;
@@ -89,17 +89,30 @@ impl LertVisualizer{
         }
         //println!("{}",first_flush);
         let touch_step = r.pow(j)*(c + i) % mod_term + zeroth_flush;
-        //println!("{}", touch_step);
+        let touch_mod = mod_term - (zeroth_flush % mod_term);
         let flush_step = (r.pow(j)*(c + i) + first_flush) % mod_term;
         let next_bin_flush_step = (r.pow(j)*(c + i + 1) + first_flush) % mod_term;
         let is_it_my_turn: bool = t % mod_term == flush_step;
-        //println!("{}",(next_bin_flush_step % mod_term));
+
+        let shifted_flush_step = (flush_step + touch_mod) % mod_term;
+        let shifted_next_bin_flush_step = (next_bin_flush_step + touch_mod) % mod_term;
+        let shifted_t = (t + touch_mod) % mod_term;
+        //println!("shifted t = {}", shifted_t);
+        //println!("shifted flush step = {}", shifted_flush_step);
+        //println!("shifted next bin flush step = {}", shifted_next_bin_flush_step);
+        
         //let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step % mod_term) - 1;
-        let mut im_filling: bool = t % mod_term > flush_step && t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term;
+        let mut im_filling: bool = shifted_t >= (shifted_flush_step + 1) % mod_term && shifted_t < (shifted_next_bin_flush_step) % mod_term;
+        //println!("am i filling= {}", im_filling);
+
+        //let mut im_filling: bool = (t + touch_mod) % mod_term >= (flush_step + touch_mod + 1) % mod_term && (t + touch_mod) % mod_term <= (next_bin_flush_step + mod_term + touch_mod - 1) % mod_term;
         if bin_id == self.num_bins - 1 {
-           im_filling = t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term
+            im_filling = shifted_t >= (shifted_flush_step + 1) % mod_term
+            //im_filling = t % mod_term <= (next_bin_flush_step + mod_term - 1) % mod_term;
+           
         }
         let is_my_bin_touched = t>= touch_step;
+        //println!("is my bin touched = {}", is_my_bin_touched);
         let is_my_level_full: bool = t >= first_flush;
         //println!("t = {}, mod_term = {}, r^j*(c+i) = {}", t, mod_term, r.pow(j)*(c + i));
         
@@ -115,9 +128,18 @@ impl LertVisualizer{
         }
         else { 
             if is_my_bin_touched {
-                if im_filling && j > 0{
+                if im_filling && j > 0 && partial{
+                    //println!("wow");
                     let bin_size = r.pow(j);
-                    (((t-1)% bin_size) as f64 /r.pow(j-1) as f64).floor()/r as f64
+                    //println!("{},{}", shifted_t, shifted_flush_step);
+                    let steps_since_flush = (shifted_t + (bin_size - (shifted_flush_step% bin_size))) % bin_size;
+                    //println!("{}", steps_since_flush);
+                    //println!("{}", steps_since_flush as f64 /r.pow(j-1) as f64);
+                    //let result = (((t-1)% bin_size) as f64 /r.pow(j-1) as f64).floor()/r as f64;
+                    let result = (steps_since_flush as f64 /r.pow(j-1) as f64).floor()/r as f64;
+                    //println!("{}", ((t-1)% bin_size) as f64 /r.pow(j-1) as f64);
+
+                    result
                     //((t-1)% bin_size) as f64 / bin_size as f64
                 }
                 else{
@@ -130,7 +152,7 @@ impl LertVisualizer{
         }   
     }
 
-    pub fn display_bins(&self, timestep: u32) {
+    pub fn display_bins(&self, timestep: u32, partial: bool) {
         //assert!(timestep >=0);
         self.wipeout();
         self.display_parameters(2);
@@ -159,14 +181,6 @@ impl LertVisualizer{
                 if i%4==0 {
                     line_frame.push('|');
                 }
-                //else if i%2==0 {
-                //    let mut flushing: char = ' ';
-                    
-                //   if self.bin_status(j, ((i-2)as f64/4.0 as f64).floor() as u32, timestep) {
-                //        flushing = 'x';
-                //    }
-                //    line_frame.push(flushing);
-                //}
                 else {
                     line_frame.push(' ');
                 }
@@ -175,7 +189,7 @@ impl LertVisualizer{
             //print!("{goto}{}", line_frame, goto = cursor::Goto(1,next_line));
             print!("{goto}{}", line_frame, goto = cursor::Goto(1,next_line));
             for i in 0..=self.num_bins -1 {
-                let status = self.bin_status(j, i, timestep);
+                let status = self.bin_status(j, i, timestep, partial);
                 let write_position = 4*i + 3;
                 if status == 2.0 {
                     print!("{goto}!", goto = cursor::Goto(write_position.try_into().unwrap(),next_line));
@@ -204,38 +218,38 @@ impl LertVisualizer{
              goto  = cursor::Goto(1, 1));
     }
 
-    fn next(& mut self) {
+    fn next(& mut self, partial: bool) {
         self.wipeout();
         self.epoch_counter += 1;
-        self.display_bins(self.epoch_counter);
+        self.display_bins(self.epoch_counter, partial);
     }
 
-    fn previous(& mut self) {
+    fn previous(& mut self, partial: bool) {
         if self.epoch_counter == 0 {
         }
         else {
             self.wipeout();
             self.epoch_counter -= 1;
-            self.display_bins(self.epoch_counter);
+            self.display_bins(self.epoch_counter, partial);
         }
     }
     
 
     //animates the flushing schedule from epoch start_step for duration epochs. updates at a rate of refresh milliseconds.
-    pub fn animate_bins_auto(&self, start_step: u32, duration: u32, refresh: u32){
+    pub fn animate_bins_auto(&self, start_step: u32, duration: u32, refresh: u32, partial: bool){
 
         let refresh_rate = time::Duration::from_millis(refresh as u64);
         let end_step = start_step+duration;
         for i in start_step..=end_step{
             //self.wipeout();
             //println!("Epoch: {}", i);
-            self.display_bins(i);
+            self.display_bins(i, partial);
             thread::sleep(refresh_rate);
 
         }
     }
 
-    pub fn animate_bins_manual(& mut self, start_step: u32) {
+    pub fn animate_bins_manual(& mut self, start_step: u32, partial: bool) {
         let stdin = stdin();
         let mut stdout = stdout().into_raw_mode().unwrap();
         self.epoch_counter = start_step;
@@ -243,7 +257,7 @@ impl LertVisualizer{
         //self.wipeout();
         //writeln!(stdout, "{}", format!("Epoch: {}", i)).unwrap();
 
-        self.display_bins(self.epoch_counter);
+        self.display_bins(self.epoch_counter, partial);
 
         //writeln!(stdout, "Left/right arrow keys for previous/next epoch. q to quit.").unwrap();
 
@@ -254,8 +268,8 @@ impl LertVisualizer{
             match c.unwrap() {
                 // Exit.
                 Key::Char('q') => break,
-                Key::Right => self.next(),
-                Key::Left => self.previous(),
+                Key::Right => self.next(partial),
+                Key::Left => self.previous(partial),
                 _              => break,
             }
         }
@@ -350,10 +364,10 @@ fn main() {
     //     }
     // }
 
-    //println!("{}", l.bin_status(1,1,3));
+    //println!("{}", l.bin_status(1,0,2));
+    let partial = false;
     
-    
-    l.animate_bins_manual(0);
+    l.animate_bins_manual(0, partial);
 
     
 
