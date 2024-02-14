@@ -16,4 +16,8 @@ Clone the repository and cd into it. You're done!
 
 ## Explaining the flushing schedule
 
-![Flushing Schedule explanation](https://github.com/tenchd/flushing_schedule/blob/main/flushing_schedule.jpeg?raw=true)
+![Flushing Schedule explanation](https://github.com/tenchd/flushing_schedule/blob/main/flush0.PNG?raw=true)
+
+![Flushing-to Schedule explanation](https://github.com/tenchd/flushing_schedule/blob/main/flush1.PNG?raw=true)
+
+![Flushing Schedule rosetta stone](https://github.com/tenchd/flushing_schedule/blob/main/flush2.PNG?raw=true)
