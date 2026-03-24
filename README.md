@@ -15,6 +15,7 @@ A Leveled External-Memory Reporting Table (LERT) is an external-memory data stru
 ## Project Goals
 The goal of this repo is, given specific parameters that govern the size, throughput, and reporting latency of a LERT, to predict and concisely visualize the times at which various bins will flush. This is a crucial function for designing and testing a LERT implementation.
 
+## Flushing Schedule Simulator Details
 The time granularity of this visualizer is the epoch, which is the time required for one of the the top-level bins to completely fill with observations from an initially empty state. The simulator displays all bins in the LERT, initially at epoch 0, which by convention we define to be the moment that the first bin at the first level fills for the first time during the stream. The user can advance or rewind the simulator to different epochs, and it will display the current status of each bin (empty, nonempty, flushing) at that epoch.
 
 The simulator allows the user to specify several key parameters that affect LERT size, layout, and flushing behavior:
