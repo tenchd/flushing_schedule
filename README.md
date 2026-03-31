@@ -1,6 +1,12 @@
 # LERT Flushing Schedule Visualizer
 This repo is a visualizer for the flushing schedule used by an in-development variant of the Leveled External-Memory Reporting Table (LERT) first described in [Timely Reporting of Heavy Hitters Using External Memory](https://dl.acm.org/doi/epdf/10.1145/3472392) by Singh et. al. It is intended to assist researchers/developers by simulating (via closed-form calculation) the sequence of external memory data movement operations that a LERT will execute during operation. 
 
+## Quick Start
+N.B.: Requires Rust and its package manager, Cargo, to be installed.
+1. Clone the repo, then cd into it.
+2. `cargo run` starts the simulator. When prompted, press any key to use default parameters.
+3. Use the left and right arrow keys to change epochs.
+
 ## Motivation
 Real-time monitoring of high-rate data streams, with the goal of detecting and preventing malicious events, is a critical component of defense systems for cybersecurity as well as for physical systems, e.g., for water or power distribution. In such a monitoring system, the stream of observations represent the changes to the state of the system. An event is a (not necessarily contiguous) sequence of observations which may indicate malicious activity on the network. Each detected/reported event triggers an intervention. Analysts use more specialized tools to gauge the actual threat level. Some systems automatically take defensive actions, such as blocking a remote host, based on detected events. Accuracy (i.e., few false-positives and no false-negatives) and timeliness of event reporting are essential to these systems.
 
